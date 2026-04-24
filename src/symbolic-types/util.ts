@@ -86,3 +86,12 @@ export function typesEqual(a: CategoryKindType | undefined, b: CategoryKindType 
         }
     }
 }
+
+export function setSome<T>(set: Set<T>, element: T, predicate: (...args: T[]) => boolean): boolean {
+    for (const member of set) {
+        if (predicate(member, element)) {
+            return true;
+        }
+    }
+    return false;
+}
