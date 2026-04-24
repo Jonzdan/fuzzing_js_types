@@ -1,6 +1,8 @@
 import { SymbolInfo } from "./types";
 import { Scope } from "./scope";
 
+// NEXT TODO: associate scope nodes with related AST nodes (thinking all related)
+
 export class ScopeMap {
     root: Scope;
     current: Scope;

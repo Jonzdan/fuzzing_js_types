@@ -1,4 +1,4 @@
-import { CATEGORY, InferKindAndCategoryOutput, KIND } from "../constants";
+import { CATEGORY, CategoryKeyWithoutSimple, InferKindAndCategoryOutput, KIND } from "../constants";
 
 /**
  * Kind operator detailed in https://scg.unibe.ch/assets/archive/external/JavaScriptTypeInferenceUsingDynamicAnalysisMasterThesis.pdf page 23
@@ -7,20 +7,18 @@ import { CATEGORY, InferKindAndCategoryOutput, KIND } from "../constants";
  * 
  * Type localization of single variable -- not final
  */
-export function inferKindAndCategory(value: unknown): InferKindAndCategoryOutput {
+export function inferKindAndCategory(value: unknown): InferKindAndCategoryOutput<CategoryKeyWithoutSimple> {
     /**
      * Separate handler for Array & null since (typeof null/Array) = 'object'
      */
     if (Array.isArray(value)) {
         return {
-            isSimple: false,
             kind: KIND.array,
             category: CATEGORY.array
         };
     }
     if (value === null) {
         return {
-            isSimple: false,
             kind: KIND.null,
             category: CATEGORY.primitive
         };
@@ -30,7 +28,6 @@ export function inferKindAndCategory(value: unknown): InferKindAndCategoryOutput
     switch (typeString) {
         case "function":
             return {
-                isSimple: false,
                 kind: KIND.function,
                 category: CATEGORY.function
             };
@@ -40,7 +37,6 @@ export function inferKindAndCategory(value: unknown): InferKindAndCategoryOutput
              * E.g., Date object
              */
             return {
-                isSimple: true,
                 kind: Object.prototype.toString.call(value),
                 category: CATEGORY.simple
             };
@@ -48,14 +44,12 @@ export function inferKindAndCategory(value: unknown): InferKindAndCategoryOutput
         default:
             return typeString !== "symbol"
                 ? {
-                    isSimple: false,
                     kind: KIND[typeString],
                     category: CATEGORY.primitive
                 }
                 : {
-                    isSimple: false,
                     kind: KIND.void,
-                    category: CATEGORY.void
+                    category: CATEGORY.misc.void
                 };
     }
 }

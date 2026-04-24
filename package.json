@@ -16,7 +16,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "analyze": "node node_modules/jalangi2/src/js/commands/jalangi.js --inlineIID --inlineSource --astHandlerModule \"C:\\Users\\jonzd\\.vscode\\HTML\\CS 6888\\fuzzing_js_types\\scripts\\ast-handler.js\" --analysis scripts/runtime-trace.js tests/test_es5.js",
+    "analyze": "npx tsx scripts/run.ts tests/test_es5.js",
     "import": "node src/write_to_sqlite.js",
     "clean": "rimraf -g \"./logs/*\""
   },

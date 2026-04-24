@@ -30,6 +30,7 @@
  * 
  */
 
+import { ScopeMap, SymbolId } from "src/trace";
 import { Kinds, KIND } from "../constants";
 import { inferKindAndCategory } from "./infer-local";
 
@@ -50,9 +51,10 @@ import { inferKindAndCategory } from "./infer-local";
  * @param ScopeMap
  * @returns a type map storing 
  */
-export function inferTypes(/* traceLog: unknown, ScopeMap: unknown */) {
-    
-}
+export function inferTypes(logs: any[], scopeMap: ScopeMap) {
+    // string = written out type
+    const typeMap: Record<SymbolId, string> = {};
+}   
 
 
 /**
@@ -75,13 +77,7 @@ export function inferUnionType(values: unknown[]): (keyof Kinds | string)[] {
 }
 
 export function inferFunctionType() {}
-
 export function inferArrayType() {}
-
-/**
- * Not a simple object, array, or function
- * @param {*} values 
- */
 export function inferObjectType() {}
 export function inferConstructorType() {}
 export function inferClassType() {}

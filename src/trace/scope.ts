@@ -54,7 +54,7 @@ export class Scope {
         for (const [name, info] of obj.vars) {
             scope.vars.set(name, {
                 ...info,
-                node: null // AST re-linked during analysis phase
+                node: null // AST re-linked during analysis phase?
             });
         }
 

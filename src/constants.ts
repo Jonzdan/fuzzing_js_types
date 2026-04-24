@@ -1,14 +1,17 @@
 /**
  * Table 3.1/3.2, Pg 21-30
  */
-export const CATEGORY = Object.freeze({
+export const CATEGORY = {
     primitive: "primitive",
     simple: "simple",
     function: "function",
     array: "array",
     object: "object",
-    void: "void"
-});
+    misc: {
+        void: "void",
+        union: "union",
+    }
+} as const;
 
 export const NUMBER = "number";
 export const BIGINT = "bigint";
@@ -40,18 +43,53 @@ export type Kinds = typeof KIND;
 export type Categories = typeof CATEGORY;
 
 interface InferKindAndCategorySimpleOutput {
-    readonly isSimple: true;
-    readonly category: keyof Categories;
+    readonly category: Categories["simple"];
     readonly kind: string;
 }
 
-interface InferKindAndCategoryKindOutput {
-    readonly isSimple: false;
-    readonly category: keyof Categories;
-    readonly kind: keyof Kinds;
+// Fix being string\
+type Category = keyof typeof CategoryKindMap;
+
+type KindFor<C extends Category> =
+  (typeof CategoryKindMap)[C][number];
+
+export type CategoryKeyWithoutSimple = Exclude<Category, "simple">;
+
+type InferKindAndCategoryKindOutput<C extends Category = Category> = {
+    readonly category: C;
+    readonly kind: KindFor<C>;
+};
+
+export type KindToString = keyof Omit<Kinds, typeof KIND.union> | string;
+
+export type InferKindAndCategoryOutput<C extends Category> = InferKindAndCategoryKindOutput<C> | InferKindAndCategorySimpleOutput;
+
+interface FunctionParam {
+    name: string;        
+    type: CategoryKindType;
 }
 
-export type InferKindAndCategoryOutput = InferKindAndCategoryKindOutput | InferKindAndCategorySimpleOutput; 
+export type CategoryKindType = InferKindAndCategoryKindOutput & {
+    isOptional?: boolean;
+    elementType?: CategoryKindType | null;                  // array
+    properties?: Map<string, CategoryKindType>;             // object/class
+    className?: string;                                     // class
+    params?: (FunctionParam | undefined)[];                 // function
+    returnType?: CategoryKindType;                          // function
+    isCtor?: boolean;                                       // function
+    members?: Set<CategoryKindType>;                           // union
+};
+
+// Maps deps
+export const CategoryKindMap = {
+    [CATEGORY.primitive]: [KIND.bigint, KIND.boolean, KIND.null, KIND.number, KIND.string, KIND.undefined],
+    [CATEGORY.array]: [KIND.array],
+    [CATEGORY.function]: [KIND.function],
+    [CATEGORY.simple]: [KIND.object],  // should be class, not a kind not defined in table -- add?
+    [CATEGORY.object]: [KIND.object],
+    [CATEGORY.misc.union]: [KIND.union],
+    [CATEGORY.misc.void]: [KIND.void],
+} as const;
 
 
 /**
