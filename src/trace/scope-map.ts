@@ -1,8 +1,6 @@
 import { SymbolInfo } from "./types";
 import { Scope } from "./scope";
 
-// NEXT TODO: associate scope nodes with related AST nodes (thinking all related)
-
 export class ScopeMap {
     root: Scope;
     current: Scope;
@@ -43,17 +41,11 @@ export class ScopeMap {
         return this.current.resolve(name);
     }
 
-    serialize(): string {
-        return JSON.stringify(this.root.toJSON());
-    }
+    reset() {
+        this.root = new Scope(1);
+        this.current = this.root;
 
-    static deserialize(data: string): ScopeMap {
-        const obj = JSON.parse(data);
-
-        const sm = new ScopeMap();
-        sm.root = Scope.fromJSON(obj);
-        sm.current = sm.root;
-
-        return sm;
+        this.nextScopeId = 2;
+        this.nextSymbolId = 1;
     }
 }

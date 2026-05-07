@@ -26,45 +26,52 @@ interface BaseTraceLog {
     readonly id: SymbolId;
 }
 
-interface EnterTraceLog extends BaseTraceLog {
+export interface EnterTraceLog extends BaseTraceLog {
     readonly type: typeof TracePropertyNames.enter;
     readonly args: unknown[];
     readonly fn: Function;
     readonly callStack: number[]; 
 }
 
-interface ReturnTraceLog extends BaseTraceLog {
+export interface ReturnTraceLog extends BaseTraceLog {
     readonly type: typeof TracePropertyNames.returning;
     readonly args: unknown[];
-    readonly value: any;
+    readonly value?: any;
+    readonly refId?: number;
     readonly callStack: number[];
 }
 
-interface ExitTraceLog extends BaseTraceLog {
+export interface ExitTraceLog extends BaseTraceLog {
     readonly type: typeof TracePropertyNames.exit;
     readonly callStack: number[]; 
 }
 
-interface AssignTraceLog extends BaseTraceLog {
+export interface AssignTraceLog extends BaseTraceLog {
     readonly type: typeof TracePropertyNames.assign;
-    readonly value: any;
+    readonly value?: any;
+    readonly refId?: number;
 }
 
-interface PropTraceLog extends BaseTraceLog {
+export interface PropTraceLog extends BaseTraceLog {
     readonly type: typeof TracePropertyNames.prop;
     readonly prop: string;
     readonly value: any;
+    readonly refId?: number;
+    readonly isRead: boolean;
+    readonly isDeletion: boolean;
+    readonly isInitial: boolean;
     readonly callStack: number[]; 
 }
 
-interface CtorTraceLog extends BaseTraceLog {
+export interface CtorTraceLog extends BaseTraceLog {
     readonly type: typeof TracePropertyNames.ctor;
     readonly fn: Function | null;
 }
 
-interface CreateTraceLog extends BaseTraceLog {
+export interface CreateTraceLog extends BaseTraceLog {
     readonly type: typeof TracePropertyNames.create;
     readonly className: string | null;
+    readonly isArray: boolean;
     readonly callStack: number[]; 
 }
 

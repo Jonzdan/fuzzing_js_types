@@ -1,4 +1,4 @@
-import { CATEGORY, CategoryKeyWithoutSimple, InferKindAndCategoryOutput, KIND } from "../constants";
+import { CATEGORY, InferKindAndCategoryOutput, KIND } from "../constants";
 
 /**
  * Kind operator detailed in https://scg.unibe.ch/assets/archive/external/JavaScriptTypeInferenceUsingDynamicAnalysisMasterThesis.pdf page 23
@@ -7,7 +7,7 @@ import { CATEGORY, CategoryKeyWithoutSimple, InferKindAndCategoryOutput, KIND } 
  * 
  * Type localization of single variable -- not final
  */
-export function inferKindAndCategory(value: unknown): InferKindAndCategoryOutput<CategoryKeyWithoutSimple> {
+export function inferKindAndCategory(value: unknown): InferKindAndCategoryOutput {
     /**
      * Separate handler for Array & null since (typeof null/Array) = 'object'
      */

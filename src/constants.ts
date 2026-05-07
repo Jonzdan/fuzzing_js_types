@@ -7,16 +7,16 @@ export const CATEGORY = {
     function: "function",
     array: "array",
     object: "object",
-    misc: {
+    misc: { // Extensions beyond what's labeled in table
         void: "void",
         union: "union",
+        any: "any"
     }
 } as const;
 
 export const NUMBER = "number";
 export const BIGINT = "bigint";
 export const BOOLEAN = "boolean";
-export const STRING = "string";
 export const UNDEFINED = "undefined";
 export const NULL = "null";
 export const FUNCTION = "function";
@@ -24,6 +24,8 @@ export const ARRAY = "array";
 export const OBJECT = "object";
 export const UNION = "union";
 export const VOID = "void";
+export const ANY = "any";
+export const STRING = "string";
 
 export const KIND = {
     number: NUMBER,
@@ -37,70 +39,101 @@ export const KIND = {
     object: OBJECT,
     union: UNION,
     void: VOID,
+    any: ANY
 } as const;
 
-export type Kinds = typeof KIND;
-export type Categories = typeof CATEGORY;
+export type Kinds = (typeof KIND)[keyof typeof KIND];
+export type Categories =
+    | "primitive"
+    | "simple"
+    | "function"
+    | "array"
+    | "object"
+    | "union"
+    | "void"
+    | "any";
 
-interface InferKindAndCategorySimpleOutput {
-    readonly category: Categories["simple"];
-    readonly kind: string;
-}
-
-// Fix being string\
-type Category = keyof typeof CategoryKindMap;
-
-type KindFor<C extends Category> =
-  (typeof CategoryKindMap)[C][number];
-
-export type CategoryKeyWithoutSimple = Exclude<Category, "simple">;
-
-type InferKindAndCategoryKindOutput<C extends Category = Category> = {
-    readonly category: C;
-    readonly kind: KindFor<C>;
+// Note: category simple --> kind string 
+export type InferKindAndCategoryOutput = {
+    readonly category: Categories;
+    readonly kind: Kinds | string;
 };
 
-export type KindToString = keyof Omit<Kinds, typeof KIND.union> | string;
+export type KindToString = Exclude<Kinds, typeof KIND.union> | string;
 
-export type InferKindAndCategoryOutput<C extends Category> = InferKindAndCategoryKindOutput<C> | InferKindAndCategorySimpleOutput;
-
-interface FunctionParam {
+export interface FunctionParam {
     name: string;        
-    type: CategoryKindType;
+    type: SymbolicType;
 }
 
-export type CategoryKindType = InferKindAndCategoryKindOutput & {
+export type PrimitiveKind = Extract<Kinds,
+    | "number"
+    | "bigint"
+    | "boolean"
+    | "string"
+    | "undefined"
+    | "null">;
+
+
+interface OptionalType extends InferKindAndCategoryOutput {
     isOptional?: boolean;
-    elementType?: CategoryKindType | null;                  // array
-    properties?: Map<string, CategoryKindType>;             // object/class
-    className?: string;                                     // class
-    params?: (FunctionParam | undefined)[];                 // function
-    returnType?: CategoryKindType;                          // function
-    isCtor?: boolean;                                       // function
-    members?: Set<CategoryKindType>;                           // union
-};
+}
 
-// Maps deps
-export const CategoryKindMap = {
-    [CATEGORY.primitive]: [KIND.bigint, KIND.boolean, KIND.null, KIND.number, KIND.string, KIND.undefined],
-    [CATEGORY.array]: [KIND.array],
-    [CATEGORY.function]: [KIND.function],
-    [CATEGORY.simple]: [KIND.object],  // should be class, not a kind not defined in table -- add?
-    [CATEGORY.object]: [KIND.object],
-    [CATEGORY.misc.union]: [KIND.union],
-    [CATEGORY.misc.void]: [KIND.void],
-} as const;
+export interface PrimitiveType extends OptionalType {
+    readonly category: "primitive";
+    readonly kind: PrimitiveKind;
+}
 
+export interface SimpleType extends OptionalType {
+    readonly category: "simple";
+    readonly kind: string; // classname - paper distinction
+    properties: Map<string, SymbolicType>;
+}
 
-/**
- * Trace Log Entry Names
- * Table 3.3, Page 31 of Paper
- */
-export const TraceLogEntries = {
-    var_assign: "assign",
-    func_enter: "enter",
-    func_exit: "returning",
-    obj_create: "create",
-    obj_ctor: "ctor",
-    obj_prop: "prop"
-} as const;
+export interface ArrayType extends OptionalType {
+    readonly category: "array";
+    readonly kind: "array";
+    elementType: SymbolicType;
+}
+
+export interface ObjectType extends OptionalType {
+    readonly category: "object";
+    readonly kind: "object";
+    properties: Map<string, SymbolicType>;
+}
+
+export interface FunctionType extends OptionalType {
+    readonly category: "function";
+    readonly kind: "function";
+    params: (FunctionParam | undefined)[];
+    returnType: SymbolicType;
+    isCtor?: boolean;
+}
+
+export interface UnionType extends OptionalType {
+    readonly category: "union";
+    readonly kind: "union";
+    members: Set<SymbolicType>;
+}
+
+export interface VoidType extends OptionalType {
+    readonly category: "void";
+    readonly kind: "void";
+}
+
+export interface AnyType extends OptionalType {
+    readonly category: "any";
+    readonly kind: "any";
+}
+
+// Final discriminated union
+
+export type SymbolicType =
+    | PrimitiveType
+    | SimpleType
+    | ArrayType
+    | ObjectType
+    | FunctionType
+    | UnionType
+    | VoidType
+    | AnyType;

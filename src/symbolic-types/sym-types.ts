@@ -1,8 +1,15 @@
-import { CategoryKindType, KindToString } from "src/constants";
-import { typesEqual, setSome } from "./util";
+import { ArrayType, SymbolicType, FunctionType, KindToString, ObjectType, SimpleType } from "src/constants";
+import { typesEqual } from "./util";
 
-interface SymbolicTypeBuildable {
-    build(): CategoryKindType;
+interface SymbolicBuildable {
+    /**
+     * For code generation step -- mainly serialization in a sense to a common shared type  
+     * Used by Symbolic Types mainly for recursive structural building of types 
+     */
+    build(): SymbolicType;
+    /**
+     * Used primarily to format symbolic class properties into typescript types 
+     */
     toString(): string;
 }
 
@@ -16,14 +23,14 @@ interface SymbolicTypeBuildable {
  * build()
  * toString()
  */
-export class SymbolicUnion implements SymbolicTypeBuildable {
-    private readonly observed: CategoryKindType[];
+export class SymbolicUnion implements SymbolicBuildable {
+    private readonly observed: SymbolicType[];
 
-    constructor(observed: CategoryKindType[] = []) {
+    constructor(observed: SymbolicType[] = []) {
         this.observed = observed;
     }
 
-    add(type: CategoryKindType): void {
+    add(type: SymbolicType): void {
         if (this.observed.some(t => typesEqual(t, type))) {
             return;
         }
@@ -31,81 +38,29 @@ export class SymbolicUnion implements SymbolicTypeBuildable {
         this.observed.push(type);
     }
 
-    // Flatten any nested unions
-    static flattenUnion(members: Set<CategoryKindType>): Set<CategoryKindType> {
-        let outputMembers = new Set<CategoryKindType>()
-
-        if (!members.size) {
-            return outputMembers;
-        }
-
-        for (const { category, members: childMembers } of members) {
-            if (!childMembers) {
+    /**
+     * Since all other symbolic types are based off symbolic union, optionality is exposed here  
+     * Should allow for incremental buliding out of recursive union types (primarily for object types)
+     */
+    updateOptionality(type: SymbolicType, value: boolean) {
+        for (let i = 0; i < this.observed.length; i++) {
+            if (!typesEqual(type, this.observed[i])) {
                 continue;
             }
 
-            outputMembers = outputMembers.union(
-                category === "union"
-                    ? this.flattenUnion(childMembers)
-                    : members
-            );
+            this.observed[i]!.isOptional = value;
         }
-
-        return outputMembers;
     }
 
-    /**
-     * Mainly for complex objects (compared with reference equality)
-     * @param observed
-     * @returns 
-     */
-    static dedupUnion(members: Set<CategoryKindType>): Set<CategoryKindType> {
-        const outputMembers = new Set<CategoryKindType>();
-        for (const t of members) {
-            if (!setSome(outputMembers, t, (t1, t2) => typesEqual(t1, t2))) {
-                outputMembers.add(t);
-            }
-        }
-
-        return outputMembers;
-    }
-
-    /**
-     * Only merges/unions types (doesn't care about anything else)
-     * @param observed
-     * @param other 
-     */
-    static mergeUnions(observed: CategoryKindType[], other: CategoryKindType[]) {
-        const union = new Set<CategoryKindType>();
-
-        observed.forEach((type) => {
-            if (type.category === "union") {
-                union.union(
-                    this.flattenUnion(type.members || new Set())
-                )
-            } else {
-                union.add(type);
-            }
+    private flattenUnion(types: SymbolicType[]): SymbolicType[] {
+        return types.flatMap((type) => {
+            return (type.category === "union")
+                ? this.flattenUnion([...type.members])
+                : type;
         });
-
-        other.forEach((type) => {
-            if (type.category === "union") {
-                union.union(
-                    this.flattenUnion(type.members || new Set())
-                )
-            } else {
-                union.add(type);
-            }
-        });
-
-        return {
-            category: "union",
-            kind: "union",
-            members: this.dedupUnion(union)
-        };
     }
 
-    build(): CategoryKindType {
+    build(): SymbolicType {
         if (this.observed.length === 0) {
             return {
                 category: "void",
@@ -113,15 +68,13 @@ export class SymbolicUnion implements SymbolicTypeBuildable {
             };
         }
  
-        // Flatten any nested unions. Should not be more than 1 depth deep
-        const flat: CategoryKindType[] = this.observed.flatMap(type => 
-            type.kind === "union"
-                ? [...SymbolicUnion.flattenUnion(type.members!)]
+        const flat: SymbolicType[] = this.observed.flatMap(type => 
+            type.category === "union" && type.kind === "union"
+                ? this.flattenUnion([...type.members])
                 : [type]
         );
-    
-        // Deduplicate by structural equality -- revisit... should maybe use existing dedup method?
-        const deduped: CategoryKindType[] = [];
+
+        const deduped: SymbolicType[] = [];
         for (const t of flat) {
             if (!deduped.some(existing => typesEqual(existing, t))) {
                 deduped.push(t);
@@ -136,25 +89,271 @@ export class SymbolicUnion implements SymbolicTypeBuildable {
     }
 
     toString(): KindToString {
-        const { members } = this.build();
-        if (!members) {
-            return '';
-        }
-
-        return `(${[...members].join('|')})`;
-        
+        return typeToString(this.build());
     }
 
 }
 
-export class SymbolicArray {
+/**
+ * Takes in a union of size 0-n. Outputs a SymbolicType with elementType = ... (what designates it an array)
+ */
+export class SymbolicArray implements SymbolicBuildable {
+    private types: SymbolicUnion;
+
+    constructor(types?: SymbolicUnion) {
+        this.types = types || new SymbolicUnion();
+    }
+
+    addElement(type: SymbolicType): void {
+        this.types.add(type);
+    }
+
+    build(): ArrayType {
+        const output = this.types.build();
+
+        return {
+            category: "array",
+            kind: "array",
+            elementType: (output.category === "union" && (!output.members || output.members.size > 1))
+                ? { kind: "any", category: "any" }
+                : output
+        };
+    }
+
+    toString(): KindToString {
+        const { elementType } = this.build();
+        if (!elementType) {
+            return '[]';
+        }
+
+        return `${elementType.kind === "void" ? 'never' : elementType.kind}[]`;
+    }
+}
+
+export class SymbolicFunction implements SymbolicBuildable {
+    private params: SymbolicUnion[];
+    private returnType: SymbolicUnion;
+    private formalParams: string[];
+    private isCtor: boolean;
+    private optionalParams: Set<number>;
+
+    constructor(formalParams?: string[], params?: SymbolicUnion[], returnType?: SymbolicUnion, isCtor?: boolean) {
+        this.params = params || [];
+        this.returnType = returnType || new SymbolicUnion();
+        this.isCtor = isCtor || false;
+        this.formalParams = formalParams || [];
+        this.optionalParams = new Set();
+    }
+
+    addParamObservation(index: number, param: SymbolicType): void {
+        if (!this.params[index]) {
+            this.params[index] = new SymbolicUnion();
+        }
+        this.params[index]!.add(param);
+    }
+
+    addReturnObservation(type: SymbolicType): void {
+        this.returnType.add(type);
+    }
+
+    setReturnType(returnType: SymbolicUnion): void {
+        this.returnType = returnType;
+    }
+
+    markParamOptional(index: number): void {
+        this.optionalParams.add(index);
+    }
+
+    isParamOptional(index: number): boolean {
+        return this.optionalParams.has(index);
+    }
+
+    setFormalParams(params: string[]): void {
+        this.formalParams = params;
+    }
+
+    getFormalParams(): string[] {
+        return [...this.formalParams];
+    }
+
+    setCtor(): void {
+        this.isCtor = true;
+    }
+
+    /**
+     * m = # of formal Params, M = observed params
+     * 
+     * if m < M --> undefined: type_M+k
+     * if m > M --> p_m: undefined 
+     */
+    build(): FunctionType {
+        const params = [];
+        for (let i = 0; i < this.formalParams.length; i++) {
+            params.push({
+                name: this.formalParams[i] ?? `param${i}`,
+                type:
+                    this.params[i]?.build() ?? {
+                        category: "primitive",
+                        kind: "undefined",
+                    }
+            });
+        }
+
+        for (let i = this.formalParams.length; i < this.params.length; i++ ) {
+            params.push({
+                name: "undefined",
+                type: this.params[i]?.build() ?? {
+                    category: "primitive",
+                    kind: "undefined",
+                },
+            });
+        }
+
+        return {
+            category: "function",
+            kind: "function",
+            params,
+            returnType: this.returnType.build(),
+            isCtor: this.isCtor
+        };
+    }
+
+    toString(): string {
+        const params: string[] = [];
+
+        for (let i = 0; i < this.formalParams.length; i++) {
+            params.push(
+                `${this.formalParams[i] ?? `param${i}`}${this.optionalParams.has(i) ? "?" : ''}: ${
+                    this.params[i] 
+                        ? this.params[i]?.toString()
+                        : "undefined"
+                }`
+            );
+        }
+
+        for (let i = this.formalParams.length; i < this.params.length; i++) {
+            params.push(
+                `undefined?: ${this.params[i]!.toString()}`
+            );
+        }
+
+        return `(${params.join(", ")}) => ${this.returnType.toString()}`;
+    }
 
 }
 
-export class SymbolicFunction {
+export class SymbolicObject implements SymbolicBuildable {
+    protected readonly properties: Map<string, SymbolicUnion>;
+    protected className: string;
+    
+    constructor(properties?: Map<string, SymbolicUnion>, className?: string) {
+        this.properties = properties || new Map();
+        this.className = className || '';
+    }
 
+    addProperty(propertyName: string, type: SymbolicType): void {
+        if (!this.properties.has(propertyName)) {
+            this.properties.set(propertyName, new SymbolicUnion())
+        }
+        this.properties.get(propertyName)!.add(type);
+    }
+
+    /**
+     * In-place mutation of this.properties to reflect elements only in both types
+     */
+    intersectWith(other: SymbolicObject): void {
+        for (const key of this.properties.keys()) {
+            if (!other.properties.has(key)) {
+                this.properties.delete(key);
+            }
+        }
+        for (const [key, union] of other.properties) {
+            if (this.properties.has(key)) {
+                this.properties.get(key)!.add(union.build());
+            }
+        }
+    }
+
+    markPropertyOptional(propertyName: string): void {
+        const union = this.properties.get(propertyName);
+        if (union) {
+            union.updateOptionality(union.build(), true);
+        }
+    }
+
+    getClass(): string {
+        return this.className;
+    }
+
+    setClass(className: string): void {
+        this.className = className;
+    }
+
+    build(): ObjectType | SimpleType {
+        return {
+            ...(
+                !this.className ? {
+                    category: "object",
+                    kind: "object"
+                } : {
+                    category: "simple",
+                    kind: this.className
+                }
+            ),
+            properties: new Map([...this.properties].map(([key, symUnion]) => {
+                return [
+                    key,
+                    symUnion.build()
+                ];
+            })),
+        };
+    }
+
+    toString(): string {
+        if (this.className) {
+            return this.className;
+        }
+        
+        return typeToString(this.build());
+    }
 }
 
-export class SymbolicObject {
+export function typeToString(type: SymbolicType): string {
+    switch (type.category) {
+        case "primitive":
+        case "void":
+        case "any":
+            return type.kind;
 
+        case "array":
+            return type.elementType
+                ? `${typeToString(type.elementType)}[]`
+                : "Array";
+
+        case "object":
+            if (!type.properties || type.properties.size === 0) {
+                return "{}";
+            }
+
+            return `{ ${[...type.properties.entries()]
+                .map(([k, v]) => `${k}${v.isOptional ? '?' : ''}: ${typeToString(v)}`)
+                .join("; ")} }`;
+
+        case "simple":
+            return type.kind ?? "object";
+
+        case "function": {
+            return `(${(type.params ?? [])
+                .map(p => `${p?.name ?? "undefined"}: ${typeToString(p?.type ?? { category: "void", kind: "void" })}`)
+                .join(", ")}) => ${typeToString(type.returnType)}`;
+        }
+
+        case "union":
+            return `(${[...type.members]
+                .map((value) => typeToString(value))
+                .sort()
+                .join(" | ")})`;
+    }
 }
+
+export type SymbolicClassTypes = SymbolicArray | SymbolicFunction | SymbolicObject | SymbolicUnion;
