@@ -15,7 +15,6 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run",
     "build": "npx tsc",
     "fuzz": "$env:NODE_V8_COVERAGE=\"coverage\"; npx jazzer ./fuzzer/sample.cjs ./corpus --sync",
     "analyze": "npx tsx scripts/run.ts seeds/test.js",
