@@ -16,7 +16,7 @@
   "main": "index.js",
   "scripts": {
     "build": "npx tsc",
-    "fuzz": "$env:NODE_V8_COVERAGE=\"coverage\"; npx jazzer ./fuzzer/sample.cjs ./corpus --sync",
+    "fuzz": "cross-env NODE_V8_COVERAGE=\"coverage\"; npx jazzer ./fuzzer/sample.cjs ./corpus --sync",
     "analyze": "npx tsx scripts/run.ts seeds/test.js",
     "exp": "npx tsx scripts/run.ts seeds/js-signals.js",
     "import": "node src/write_to_sqlite.js",
@@ -42,6 +42,7 @@
     "@types/estraverse": "^5.1.7",
     "@types/estree": "^1.0.8",
     "@types/node": "^25.6.0",
+    "cross-env": "^10.1.0",
     "jsfuzz": "^1.0.15",
     "rimraf": "^6.1.3",
     "ts-morph": "^28.0.0",
