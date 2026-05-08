@@ -1,0 +1,26 @@
+/* AUTO-GENERATED */
+declare function SignalBinding(signal: ({ _prevParams: null } | { _prevParams: null; _shouldPropagate: boolean }), listener: () => void, isOnce: boolean, listenerContext: null, priority: number): void;
+declare function execute(paramsArr: (any[] | boolean[] | null[] | number[] | string[] | void[])): (boolean | null | number | undefined);
+declare function detach(): void;
+declare function isBound(): boolean;
+declare function isOnce(): boolean;
+declare function getListener(): void;
+declare function getSignal(): void;
+declare function _destroy(): void;
+declare function toString(): void;
+declare function validateListener(listener: () => void, fnName: string): void;
+declare function Signal(): void;
+declare function _registerListener(listener: () => void, isOnce: boolean, listenerContext: null, priority: number): undefined;
+declare function _addBinding(binding: { _isOnce: boolean; context: null; _priority: number }): void;
+declare function _indexOfListener(listener: () => void, context: (null | undefined)): number;
+declare function has(listener: undefined, context: undefined): void;
+declare function add(listener: () => void, listenerContext: null, priority: number): undefined;
+declare function addOnce(listener: () => void, listenerContext: null, priority: number): undefined;
+declare function remove(listener: () => void, context?: (null | undefined)): void;
+declare function removeAll(): void;
+declare function getNumListeners(): void;
+declare function halt(): void;
+declare function dispatch(params?: (any[] | boolean | null | number | number[] | string | undefined | { x: number } | {}), undefined?: (any[] | boolean | null | number | number[] | string | { x: number } | {})): (undefined | void);
+declare function forget(): void;
+declare function dispose(): void;
+declare function toString(): void;

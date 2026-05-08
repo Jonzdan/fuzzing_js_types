@@ -1,0 +1,2 @@
+do .d.ts file generation, since current bugs exist:
+- no circular ref from inline

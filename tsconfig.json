@@ -8,12 +8,12 @@
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
+    "module": "commonjs",
     "target": "esnext",
     // For nodejs:
     "lib": ["ESNext"],
-    "types": [""],
-    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "moduleResolution": "bundler",
     // and npm install -D @types/node
 
     // Other Outputs
@@ -45,10 +45,13 @@
     }
   },
   "include": [
-    "src/**/*", "scripts",
-  ],
+    "src/**/*",
+     ],
   "exclude": [
+    "fuzzer",
+    "scripts",
     "node_modules",
+    "*.test.*",
     "dist",
   ]
 }
