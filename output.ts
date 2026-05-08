@@ -1,39 +1,39 @@
 export {};
 // ── Primitives ────────────────────────────────────────────────────────────────
 
-var x: number = 42;
-var name: string = "hello";
-var flag: boolean = false;
+var x = 42;
+var name = "hello";
+var flag = false;
 
 // reassignment
 x = 100;
 
 // union via reassignment
-var mixed: (number | string | undefined);
+var mixed;
 mixed = 1;
 mixed = "hello"; // should infer number | string
 
 // null and undefined
-var nullable: null = null;
-var undef: undefined;
+var nullable = null;
+var undef;
 undef = undefined;
 
 // ── Objects ───────────────────────────────────────────────────────────────────
 
-var obj: { a: (number | string); b: string; c: (number[] | string); inner?: { a: number } } = { a: 1, b: "world", c: [1, 4, 5] };
+var obj = { a: 1, b: "world", c: [1, 4, 5] };
 
 // property reassignment — should union string | array
 obj.c = 'a';
 
-var obj1: { a: (number | string); b: string; c: (number[] | string); inner?: { a: number } } = { a: 2, c: 5 };
+var obj1 = { a: 2, c: 5 };
 
 // dynamic property access
 (obj || obj1).a = 6;
 
 // aliasing
-var obj2: { a: (number | string); b: string; c: (number[] | string); inner?: { a: number } } = obj1 = obj;
+var obj2 = obj1 = obj;
 
-var obj3: { a: number } = { a: 5 };
+var obj3 = { a: 5 };
 
 // property write with primitive
 obj2.a = 'a';
@@ -42,52 +42,48 @@ obj2.a = 'a';
 obj2.inner = obj3;
 
 // deeply nested object
-var deep: { a: { b: { c: number } } } = { a: { b: { c: 1 } } };
+var deep = { a: { b: { c: 1 } } };
 
 // ── Arrays ────────────────────────────────────────────────────────────────────
 
 // homogeneous — should infer number[]
-var arr: number[] = [1, 2, 3];
+var arr = [1, 2, 3];
 
 // mixed — should infer Array
-var arrMixed: any[] = [1, "hello", false];
+var arrMixed = [1, "hello", false];
 
 // empty — should infer Array
-var arrEmpty: never[] = [];
+var arrEmpty = [];
 
 // ── Classes ───────────────────────────────────────────────────────────────────
 
-function Point(this: Point, x: number, y: number) {
-    this.x = x;
+function Point(x, y) {
+    this._x = x;
     this.y = y;
 }
 
 // multiple instances — class properties should be intersection
-/** @ts-expect-error legacy ES5 constructor */
-var p1: Point = new Point(2, 3);
-/** @ts-expect-error legacy ES5 constructor */
-var p2: Point = new Point(10, 20);
+var p1 = new Point(2, 3);
+var p2 = new Point(10, 20);
 
 // instance with extra property — should NOT appear in class type (intersection)
-function Rect(this: Rect, w: number, h: number) {
+function Rect(w, h) {
     this.w = w;
     this.h = h;
 }
 
-/** @ts-expect-error legacy ES5 constructor */
-var r1: Rect = new Rect(10, 20);
-/** @ts-expect-error legacy ES5 constructor */
-var r2: Rect = new Rect(5, 15);
+var r1 = new Rect(10, 20);
+var r2 = new Rect(5, 15);
 r1.extra = true; // only on r1 — should not appear in Rect class type
 
-var shape = function Shape(x: undefined): void {
+var shape = function Shape(x) {
     this.x = x;
 }
 
-var d: Date = new Date();
+var d = new Date();
 
 // class instance as function parameter
-function area(rect: Rect): number {
+function area(rect) {
     return rect.w * rect.h;
 }
 area(r1);
@@ -95,20 +91,20 @@ area(r1);
 // ── Functions ─────────────────────────────────────────────────────────────────
 
 // basic with return
-function add(a: (number | string), b: (number | string)): (number | string) {
+function add(a, b) {
     return a + b;
 }
 add(1, 2);
 add("foo", "bar"); // should union params and return
 
 // void function
-function greet(name: string): void {
+function greet(name) {
     var msg = "hello " + name;
 }
 greet("world");
 
 // null return
-function maybeNull(x: number): (null | number) {
+function maybeNull(x) {
     if (x) return x;
     return null;
 }
@@ -116,20 +112,20 @@ maybeNull(1);
 maybeNull(0);
 
 // conditional return — one branch returns, one falls through
-function g(x: boolean): (number | void) {
+function g(x) {
     if (x) return 1;
 }
 g(true);
 g(false);
 
 // function returning object
-function makeObj(): undefined {
+function makeObj() {
     return { x: 1, y: 2 };
 }
-var made: { x: number; y: number } = makeObj();
+var made = makeObj();
 
 // function returning another function — returned fn type should be global
-function makeAdder(x: number): void {
+function makeAdder(x) {
     return function(y) {
         return x + y;
     };
@@ -137,22 +133,22 @@ function makeAdder(x: number): void {
 var adder = makeAdder(1);
 
 // never called — should have no param types / void
-function uncalled(a: undefined, b: undefined): void {
+function uncalled(a, b) {
     return a + b;
 }
 
 // extra observed args beyond formal params
-function formal(a: number, b?: (number | undefined), undefined?: number): void {}
+function formal(a, b) {}
 formal(1);
 formal(1, 2, 3); // 3rd arg has no formal param — should appear as undefined: number
 
 // fewer observed args than formal params
-function sparse(a: number, b?: undefined, c?: undefined): void {}
+function sparse(a, b, c) {}
 sparse(1); // b and c unobserved — should be undefined
 
-function foo(a: (boolean | number | string)): void {}
+function foo(a) {}
 
-function bar(f: (a: number) => void, x: number): void {
+function bar(f, x) {
     f(x);
 }
 
@@ -160,16 +156,16 @@ foo(false);
 bar(foo, 2);
 
 // object duck typing — only properties accessed during connect matter
-var config: { host: string; port: number; debug: boolean } = { host: "localhost", port: 8080, debug: true };
+var config = { host: "localhost", port: 8080, debug: true };
 
-function connect(opts: { host: string; port: number; debug: boolean }): string {
+function connect(opts) {
     return opts.host;
 }
 
 connect(config);
 
 // recursive duck typing — baz passes foo to nested context
-function baz(fn: (a: string) => void, val: string): void {
+function baz(fn, val) {
     fn(val);
 }
 
@@ -178,35 +174,35 @@ baz(foo, "recursive");
 // ── Edge cases ────────────────────────────────────────────────────────────────
 
 // null and undefined params
-function f(a: (null | undefined)): void {}
+function f(a) {}
 f(null);
 f(undefined);
 
 // function called with object and primitive
-function process(data: { value: number }, count: number): number {
+function process(data, count) {
     return data.value + count;
 }
 
-var payload: { value: number } = { value: 42 };
+var payload = { value: 42 };
 process(payload, 10);
 
 // aliased function call
-var addAlias: (a: (number | string), b: (number | string)) => (number | string) = add;
+var addAlias = add;
 addAlias(3, 4);
 
 // self-referencing object
-var selfRef: { name: string; self: undefined } = { name: "self" };
+var selfRef = { name: "self" };
 selfRef.self = selfRef;
 
 // ── deletion / optionality edge case ─────────────────────────────────────────
 
-var delObj: { a: (number | undefined); b: number } = { a: 1, b: 2 };
+var delObj = { a: 1, b: 2 };
 
 delObj.a = 3;
 delete delObj.a;
 
 // after delete, accessing should behave like optional property
-function useDel(o: { a?: number; b: number }): undefined {
+function useDel(o) {
     return o.a;
 }
 

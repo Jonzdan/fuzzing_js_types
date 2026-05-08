@@ -1,9 +1,2 @@
 do .d.ts file generation, since current bugs exist:
 - no circular ref from inline
-- classes need sep interface defined for 'this' & self ref (again)
-
-attach jazzer:
-- mapped bytes --> operations
-- generated tests, need to collectively run
-- repeat on instrumented code
-

@@ -57,16 +57,15 @@ var arrEmpty = [];
 // ── Classes ───────────────────────────────────────────────────────────────────
 
 function Point(x, y) {
-    this.x = x;
+    this._x = x;
     this.y = y;
 }
 
 // multiple instances — class properties should be intersection
-var p1 = new Point(2, 3);
-var p2 = new Point(10, 20);
 
 // instance with extra property — should NOT appear in class type (intersection)
 function Rect(w, h) {
+    var p1 = new Point(2, 3);
     this.w = w;
     this.h = h;
 }

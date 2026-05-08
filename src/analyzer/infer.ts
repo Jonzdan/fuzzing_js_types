@@ -170,7 +170,13 @@ function inferEnter({ entry: { callStack, args, fn, id }, typeMap, deferredFnPar
             return;
         }
         
-        addParamToContexts(fnEntry, callStack, id, idx, resolved);
+        addParamToContexts(fnEntry, callStack, id, idx, {
+            ...resolved,
+            ...(fnEntry.global instanceof SymbolicFunction && idx >= fnEntry.global.getFormalParams().length
+                ? { isOptional: true }
+                : {}
+            )
+        });
     });
 
     if (!(fnEntry.global instanceof SymbolicFunction)) {
@@ -181,6 +187,7 @@ function inferEnter({ entry: { callStack, args, fn, id }, typeMap, deferredFnPar
         addParamToContexts(fnEntry, callStack, id, idx, {
             category: "primitive",
             kind: "undefined",
+            isOptional: true,
         });
         fnEntry.global.markParamOptional(idx);
     }
@@ -402,6 +409,9 @@ function processDeferredFnParams(deferredFnParams: DeferredFnParams) {
     }
 }
 
+/**
+ * First instance for each class is the intersection of all types
+ */
 function computeClassPropertyIntersection(classInstances: ClassInstances, typeMap: TypeMap) {
     for (const [_className, instances] of classInstances) {
         if (instances.length <= 1) {
@@ -419,13 +429,19 @@ function computeClassPropertyIntersection(classInstances: ClassInstances, typeMa
             continue;
         }
 
-        for (const instance of rest) {
-            for (const [id, entry] of typeMap) {
-                if (entry.global === instance) {
-                    typeMap.set(id, typeMap.get(firstId)!);
-                }
+        const restSet = new Set(rest);
+        for (const [id, entry] of typeMap) {
+            if (!(entry.global instanceof SymbolicObject)) {
+                continue;
             }
+
+            if (!restSet.has(entry.global)) {
+                continue;
+            }
+
+            typeMap.set(id, typeMap.get(firstId)!);
         }
+        
     }
 }
 
@@ -489,7 +505,7 @@ function processDeferredFnProps(deferredFnProps: DeferredFnProps, functionInstan
  * Builds up symbolic types per symbol id, then does a post-pass
  * to attach formal param names and handle class property intersection.
  */
-export function inferTypes(logs: TraceLogFormats[], scopeMap: ScopeMap): TypeMap {
+export function inferTypes(logs: TraceLogFormats[], scopeMap: ScopeMap): { typeMap: TypeMap, classInstances: ClassInstances }  {
     const typeMap: TypeMap = new Map();
     const symbolMap = buildSymbolMap(scopeMap);
     const classInstances: ClassInstances = new Map();
@@ -544,13 +560,13 @@ export function inferTypes(logs: TraceLogFormats[], scopeMap: ScopeMap): TypeMap
     computeClassPropertyIntersection(classInstances, typeMap);
 
     // 4. Filter to globals only
-    for (const [id, _] of typeMap) {
-        const info = symbolMap.get(id);
-        const entry = typeMap.get(id)!;
-        if (info && !info.isGlobal && !(entry.global instanceof SymbolicFunction)) {
-            typeMap.delete(id);
-        }
-    }
+    // for (const [id, _] of typeMap) {
+    //     const info = symbolMap.get(id);
+    //     const entry = typeMap.get(id)!;
+    //     if (info && !info.isGlobal && !(entry.global instanceof SymbolicFunction)) {
+    //         typeMap.delete(id);
+    //     }
+    // }
 
-    return typeMap;
+    return { typeMap, classInstances };
 }

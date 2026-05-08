@@ -1,6 +1,6 @@
 import { SymbolicType } from "src/constants";
 import { SymbolicUnion, SymbolicArray, SymbolicObject, SymbolicClassTypes, SymbolicFunction } from "../symbolic-types";
-import { SymbolId, ScopeMap, SymbolInfo } from "../trace";
+import { SymbolId, ScopeMap, SymbolInfo, rawTargets } from "../trace";
 import { inferKindAndCategory } from "./infer-local";
 import { TypeMap, FunctionInstances, refSymbolIdName, TypeEntry } from "./types";
 import { Node } from "estree";
@@ -9,16 +9,25 @@ import { Node } from "estree";
  * Resolves a raw log value to a SymbolicType.
  * Handles refId (tracked object reference) by looking up in typeMap.
  */
-export function resolveValue(value: unknown, typeMap: TypeMap, functionInstances: FunctionInstances): SymbolicType | null {
+export function resolveValue(value: unknown, typeMap: TypeMap, functionInstances: FunctionInstances, seen=new Set()): SymbolicType | null {
     if (value && typeof value === "object" && refSymbolIdName in value) {
+        seen.add(value);
         const refEntry = typeMap.get(value.refId as SymbolId);
         return refEntry ? refEntry.global.build() : null;
     }
 
+    if (seen.has(value)) {
+        return { category: "simple", kind: "object" } as SymbolicType;
+    }
+
     if (Array.isArray(value)) {
+        if (seen.has(value)) {
+            return { category: "void", kind: "void" };
+        }
+        seen.add(value);
         const union = new SymbolicUnion();
         for (const element of value) {
-            const type = resolveValue(element, typeMap, functionInstances);
+            const type = resolveValue(element, typeMap, functionInstances, seen);
             if (type) {
                 union.add(type);
             }
@@ -27,9 +36,15 @@ export function resolveValue(value: unknown, typeMap: TypeMap, functionInstances
     }
 
     if (value !== null && typeof value === "object") {
+        if (seen.has(value)) {
+            return { category: "void", kind: "void" };
+        }
+        seen.add(value);
+
         const symObj = new SymbolicObject();
-        for (const [key, val] of Object.entries(value)) {
-            const type = resolveValue(val, typeMap, functionInstances);
+        const raw = rawTargets.get(value as object) ?? value as object;
+        for (const [key, val] of Object.entries(raw)) {
+            const type = resolveValue(val, typeMap, functionInstances, seen);
             if (type) {
                 symObj.addProperty(key, type);
             }
@@ -38,6 +53,10 @@ export function resolveValue(value: unknown, typeMap: TypeMap, functionInstances
     }
 
     if (typeof value === "function") {
+        if (seen.has(value)) {
+            return { category: "void", kind: "void" };
+        }
+        seen.add(value);
         const fnEntry = functionInstances.get(value);
         return fnEntry
             ? fnEntry.global.build()
@@ -50,6 +69,10 @@ export function resolveValue(value: unknown, typeMap: TypeMap, functionInstances
             };
     }
 
+    if (seen.has(value)) {
+        return { category: "void", kind: "void" };
+    }
+    seen.add(value);
     return inferKindAndCategory(value) as SymbolicType;
 }
 

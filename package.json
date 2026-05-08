@@ -17,9 +17,11 @@
   "scripts": {
     "test": "vitest run",
     "build": "npx tsc",
+    "fuzz": "$env:NODE_V8_COVERAGE=\"coverage\"; npx jazzer ./fuzzer/sample.cjs ./corpus --sync",
     "analyze": "npx tsx scripts/run.ts seeds/test.js",
     "exp": "npx tsx scripts/run.ts seeds/js-signals.js",
     "import": "node src/write_to_sqlite.js",
+    "cov-report": " npx c8 report --reporter=html",
     "clean": "rimraf -g \"./logs/*\""
   },
   "dependencies": {

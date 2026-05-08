@@ -22,22 +22,22 @@ const instrumentedOut = path.join("logs", "instrumented.js");
 fs.writeFileSync(instrumentedOut, `${instrumented}`, "utf-8");
 console.log(`Instrumented source written to ${instrumentedOut}`);
 
-// const context = vm.createContext({ Trace, console });
+const context = vm.createContext({ Trace, console });
 
-// try {
-//     vm.runInNewContext(instrumented, context);
-// } catch (err) {
-//     console.error("Runtime error in instrumented code:", err);
-//     process.exit(1);
-// }
+try {
+    vm.runInNewContext(instrumented, context);
+} catch (err) {
+    console.error("Runtime error in instrumented code:", err);
+    process.exit(1);
+}
 
-// const log = Trace.getLog();
+const log = Trace.getLog();
 
-// const logPath = path.join("logs", "trace.log");
+const logPath = path.join("logs", "trace.log");
 
-// const lines = log.map((entry: unknown) => JSON.stringify(entry)).join("\n") + "\n";
-// fs.writeFileSync(logPath, lines, "utf-8");
+const lines = log.map((entry: unknown) => JSON.stringify(entry)).join("\n") + "\n";
+fs.writeFileSync(logPath, lines, "utf-8");
 
-// console.log(`Trace log written to ${logPath} (${log.length} entries)`);
-// const typemap = inferTypes(log, scopeMap);
-// codegen(source, typemap, scopeMap, "./output.ts");
+console.log(`Trace log written to ${logPath} (${log.length} entries)`);
+const {typeMap, classInstances } = inferTypes(log, scopeMap);
+codegen(source, typeMap, scopeMap, classInstances, "./output.ts");

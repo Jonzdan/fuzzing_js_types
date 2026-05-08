@@ -6,9 +6,21 @@ const { codegen } = require("../dist/src/codegen/index.js");
 const mod = { exports: {} };
 const fs = require("fs");
 const path = require("path");
+const util = require("node:util");
 
-const code = fs.readFileSync(path.join(__dirname, "../seeds/instrumented_signals.js"), "utf8");
-eval(`(function(module, exports, require, Trace) { ${code} })`)(mod, mod.exports, require, Trace);
+/**
+ * Should be determinstic, so scopeMap should point towards same AST.  
+ * Source = non-instrumented source 
+ */
+const source = fs.readFileSync("seeds/signals.js", "utf-8");
+const scopeMap = new ScopeMap();
+const instrumenter = new Instrumenter(scopeMap);
+const instrumented = instrumenter.instrument(source);
+const instrumentedOut = path.join("seeds", "instrumented_signals.js");
+fs.writeFileSync(instrumentedOut, `${instrumented}`, "utf-8");
+console.log(`Instrumented source written to ${instrumentedOut}`);
+
+eval(`(function(module, exports, require, Trace) { ${instrumented} })`)(mod, mod.exports, require, Trace);
 const signals = mod.exports;
 const Signal = signals.Signal || signals;
 
@@ -25,18 +37,17 @@ for (const file of files) {
 
 console.log("Trace log entries:", Trace.getLog().length);
 
-/**
- * Should be determinstic, so scopeMap should point towards same AST.  
- * Source = non-instrumented source 
- */
-const source = fs.readFileSync("seeds/signals.js", "utf-8");
-const scopeMap = new ScopeMap();
-const instrumenter = new Instrumenter(scopeMap);
-instrumenter.instrument(source);
+const log = Trace.getLog();
+const logPath = path.join("logs", "trace.log");
+
+const lines = log.map(e =>
+    util.inspect(e, { depth: null, breakLength: Infinity })
+).join("\n") + "\n";
+fs.writeFileSync(logPath, lines, "utf-8");
 
 console.time('inference time')
-const typeMap = inferTypes(Trace.getLog(), scopeMap);
+const {typeMap, classInstances} = inferTypes(Trace.getLog(), scopeMap);
 console.timeEnd('inference time')
-console.time('gen start')
-codegen(source, typeMap, scopeMap, "./instrumented_source.ts")
-console.timeEnd('gen start')
+console.time('gen time')
+codegen(source, typeMap, scopeMap, classInstances, "./seeds/signals.ts")
+console.timeEnd('gen time')

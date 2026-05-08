@@ -24,10 +24,6 @@ export class Instrumenter {
         const isGlobal = this.isGlobalScope();
         const info = this.scopeMap.declare(name, node, isGlobal);
 
-        if (!isGlobal) {
-            return;
-        }
-
         const initExpression = node.init || { type: "Identifier", name: "undefined" };
 
         if (!node.init || !isObjectInit(node.init)) {
@@ -65,21 +61,30 @@ export class Instrumenter {
         const name = (node.left as Identifier).name;
         const info = this.scopeMap.resolve(name);
 
-        if (!info || !info.isGlobal) {
+        if (!info) {
             return;
         }
 
         if (isObjectInit(node.right)) {
+            const originalRight = node.right;
+            console.log(getClassName(originalRight))
             node.right = {
                 type: "CallExpression",
                 callee: traceMember("create"),
                 arguments: [
                     { type: "Literal", value: info.symbolId },
-                    node.right,
-                    { type: "Literal", value: getClassName(node.right) }
+                    originalRight,
+                    { type: "Literal", value: getClassName(originalRight) },
+                    { type: "Literal", value: originalRight.type === "NewExpression" },
+                    ...(
+                        originalRight.type === "NewExpression" && originalRight.callee.type !== "Super"
+                            ? [originalRight.callee]
+                            : []
+                        )
                 ],
                 optional: false,
             };
+            console.log(node.right.arguments)
         } else {
             node.right = {
                 type: "CallExpression",
@@ -108,7 +113,6 @@ export class Instrumenter {
             node
         ).symbolId;
         this.functionStack.push(functionId);
-
         if (node.body.type !== "BlockStatement") {
             return;
         }
@@ -121,12 +125,17 @@ export class Instrumenter {
                 arguments: [
                     { type: "Literal", value: functionId },
                     { type: "Identifier", name: "arguments" },
-
+                    {
+                        type: "MemberExpression",
+                        object: { type: "Identifier", name: "arguments" },
+                        property: { type: "Identifier", name: "callee" },
+                        computed: false,
+                        optional: false
+                    }
                 ],
                 optional: false,
             }
         });
-
 
         /**
          * for void return paths, per the paper pg 32.
@@ -152,15 +161,7 @@ export class Instrumenter {
             enter: (node: Node, parent: Node | null) => {
                 if (node.type === "VariableDeclarator") {
                     this.instrumentVariable(node);
-                }
-
-                if (
-                    node.type === "AssignmentExpression" &&
-                    node.left.type === "Identifier" &&
-                    node.right.type !== "AssignmentExpression"
-                ) {
-                    this.instrumentAssignment(node);
-                }   
+                } 
 
                 if (
                     node.type === "FunctionDeclaration" ||
@@ -171,6 +172,14 @@ export class Instrumenter {
                     ));
                     this.instrumentFunction(node, parent);
                 }
+
+                if (
+                    node.type === "AssignmentExpression" &&
+                    node.left.type === "Identifier" &&
+                    node.right.type !== "AssignmentExpression"
+                ) {
+                    this.instrumentAssignment(node);
+                }  
 
                 if (node.type === "ReturnStatement") {
                     node.argument = {
@@ -221,7 +230,7 @@ function isObjectInit(node: Node): boolean {
 function getClassName(node: Node): string | null {
     if (node.type === "NewExpression") {
         if (node.callee.type === "Identifier") {
-            return node.callee.name as string;
+            return node.callee.name;
         }
     }
     return null;

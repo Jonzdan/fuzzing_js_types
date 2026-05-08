@@ -165,7 +165,7 @@ export class SymbolicFunction implements SymbolicBuildable {
     }
 
     isParamOptional(index: number): boolean {
-        return this.optionalParams.has(index);
+        return this.optionalParams.has(index) || !!(this.params[index] || new SymbolicUnion()).build().isOptional;
     }
 
     setFormalParams(params: string[]): void {
@@ -272,6 +272,10 @@ export class SymbolicObject implements SymbolicBuildable {
                 this.properties.get(key)!.add(union.build());
             }
         }
+    }
+
+    getProperties(): Map<string, SymbolicUnion> {
+        return new Map<string, SymbolicUnion>(this.properties);
     }
 
     markPropertyOptional(propertyName: string): void {

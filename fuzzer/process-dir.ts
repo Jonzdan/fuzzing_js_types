@@ -1,10 +1,6 @@
 import fs from "fs";
 import path from "path";
 
-// -------------------------
-// Types
-// -------------------------
-
 type DecodeOp =
     | { type: "add"; fnId: number; priority?: number }
     | { type: "addOnce"; fnId: number; priority?: number }
@@ -100,10 +96,6 @@ function toJestTest(file: string, ops: DecodeOp[]): string {
     }
     return lines.join("\n");
 }
-
-// -------------------------
-// RUN
-// -------------------------
 
 const corpusDir: string = path.join(__dirname, "../corpus");
 const outDir = path.join(__dirname, "../tests");

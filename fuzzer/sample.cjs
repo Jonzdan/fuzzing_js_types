@@ -1,22 +1,15 @@
-// fuzz.js
-// Jazzer.js target for js-signals
-// npm i @jazzer.js/core
-// run:
-// npx jazzer fuzz.js
 const { readFileSync } = require("fs");
 const path = require("path");
+const vm = require("vm");
 
 const mod = { exports: {} };
 let code = readFileSync(path.join(__dirname, "../seeds/signals.js"), "utf8");
+const context = vm.createContext({ global: globalThis, require });
+vm.runInContext(code, context, {
+    filename: path.resolve(__dirname, "../seeds/signals.js"),
+});
 
-try {
-    eval(`(function(module, exports, require) { ${code} })`)(mod, mod.exports, require, {});
-} catch(e) {
-    console.error("THREW:", e);
-}
-
-const signals = mod.exports;
-const Signal = signals.Signal || signals;
+const Signal = context.Signal || context.signals?.Signal || globalThis.signals?.Signal;
 
 function val(b) {
     switch (b % 12) {
@@ -58,10 +51,6 @@ module.exports.fuzz = function (data) {
 
         try {
         switch (op) {
-            // --------------------
-            // Signal API
-            // --------------------
-
             case 0: { // add
                 const fn = listener(data[i + 1] || 0);
                 listeners.push(fn);
@@ -139,10 +128,6 @@ module.exports.fuzz = function (data) {
                 signal.toString();
             break;
 
-            // --------------------
-            // SignalBinding API
-            // --------------------
-
             case 11:
                 if (bindings.length) {
                     const b = bindings[(data[i + 1] || 0) % bindings.length];
@@ -194,8 +179,6 @@ module.exports.fuzz = function (data) {
                 break;
         }
         } catch (_) {
-        // ignore exceptions so fuzzing continues
         }
-        // Don't care about type inference stage yet, only getting inputs
     }
 };

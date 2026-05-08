@@ -12,6 +12,8 @@ type TraceType = {
     create(id: number, obj: any, className: string | null, isCtor?: boolean, fnRef?: Function | null): any;
 };
 
+export const rawTargets = new WeakMap<object, object>();
+
 export const Trace: TraceType = (() => {
     let log: TraceLogFormats[] = [];
     let nextHeapId = 1_000_000;
@@ -32,7 +34,6 @@ export const Trace: TraceType = (() => {
             if (!trackedIds.has(value)) {
                 const id = allocHeapId();
                 trackedIds.set(value, id);
-                // recursively track nested object
                 const proxy = Trace.create(id, value, null);
 
                 trackedIds.set(proxy, id);
@@ -46,7 +47,7 @@ export const Trace: TraceType = (() => {
     }
 
     function createProxy(obj: any, id: SymbolId) {
-        return new Proxy(obj, {
+        const proxy = new Proxy(obj, {
             get(target, prop, receiver) {
                 const value = Reflect.get(target, prop, receiver);
                 if (typeof prop !== "symbol") {
@@ -100,6 +101,8 @@ export const Trace: TraceType = (() => {
                 return true;
             }
         });
+        rawTargets.set(proxy, obj);
+        return proxy;
     }
 
     return {
