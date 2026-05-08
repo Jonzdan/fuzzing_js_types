@@ -1,12 +1,15 @@
+# fuzzing-js-types
 
-# How to Run
+Automatic TypeScript type inference for JavaScript libraries using coverage-guided fuzzing.
 
-Create ./corpus folder at top-level project root dir
+## Prerequisites
+- Node.js v18+
+- Run `npm install` to install dependencies
 
-run "npm run build" to init /dist folder
+## How to Run
 
-run "npm run fuzz" to set coverage env, and fuzz using jazzer
-
-run "npm run cov-report" to generate ./coverage folder for code coverage information using c8
-
-run "npx tsx fuzzer/process-dir.ts" to generate output files. output declaration files are stored in /seeds/ 
+1. Create a `./corpus` directory at the project root
+2. Run `npm run build` to compile the project into `/dist`
+3. Run `npm run fuzz` to start coverage-guided fuzzing with Jazzer.js — runs until corpus stabilizes (~10 minutes)
+4. Run `npm run cov-report` to generate a coverage report in `./coverage` using c8
+5. Run `npx tsx fuzzer/process-dir.ts` to run type inference on the corpus and generate `.d.ts` declaration files, output to `/seeds/`
